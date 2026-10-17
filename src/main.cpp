@@ -1,18 +1,18 @@
-// M5Atom Lite Bluetooth ゲームパッド操縦ロボット
+// M5Atom Lite Bluetooth gamepad-controlled robot
 //
-// 操作 (Xbox 配置。PS/Switch パッドでも同じ位置のボタン):
-//   左スティック上下 : 前進 / 後退
-//   右スティック左右 : 旋回 (左スティック左右でも可)
-//   十字キー         : 前後左右 (デジタル操作)
-//   A (下ボタン)     : 速度レベル切替 (低 → 中 → 高)
-//   B (右ボタン)     : 押している間 非常停止
+// Controls (Xbox layout; same button positions on PS/Switch gamepads):
+//   Left stick up/down    : forward / backward
+//   Right stick left/right: turn (left stick left/right also works)
+//   D-pad                 : forward/backward/left/right (digital)
+//   A (bottom button)     : cycle speed level (low -> mid -> high)
+//   B (right button)      : emergency stop while held
 //
-// 本体ボタン:
-//   短押し : 走行ロック (ON の間は動かない) の切替
-//   長押し : ペアリング情報を消去 (別のパッドと組み直すとき)
+// On-board button:
+//   Short press: toggle drive lock (no movement while ON)
+//   Long press : clear pairing information (to pair a different gamepad)
 //
-// 本体LED:
-//   青点滅 = ゲームパッド待ち / 緑 = 接続中 / 赤 = 停止中(ロック・非常停止)
+// On-board LED:
+//   Blinking blue = waiting for gamepad / green = connected / red = stopped (lock or emergency stop)
 #include <Arduino.h>
 
 #include "config.h"
@@ -28,8 +28,8 @@ DifferentialDrive drive(leftServo, rightServo);
 constexpr uint8_t NUM_SPEED_LEVELS = sizeof(SPEED_LEVELS) / sizeof(SPEED_LEVELS[0]);
 uint8_t speedLevel = SPEED_LEVEL_DEFAULT;
 uint32_t prevButtons = 0;
-bool locked = false;    // 本体ボタンでの走行ロック
-bool stopping = false;  // B ボタンでの非常停止中
+bool locked = false;    // Drive lock toggled by the on-board button
+bool stopping = false;  // Emergency stop active (B button held)
 
 // ---------------- LED ----------------
 
@@ -40,7 +40,7 @@ void setLed(uint8_t r, uint8_t g, uint8_t b) {
 
 void updateLed(bool connected) {
   static uint32_t lastMs = 0;
-  if (millis() - lastMs < 50) return;  // 書き込み頻度を抑える
+  if (millis() - lastMs < 50) return;  // Limit the update rate
   lastMs = millis();
 
   if (!connected) {
@@ -53,7 +53,7 @@ void updateLed(bool connected) {
   }
 }
 
-// ---------------- 本体ボタン ----------------
+// ---------------- On-board button ----------------
 
 void handleButton() {
   static bool wasPressed = false;
@@ -79,11 +79,11 @@ void handleButton() {
   wasPressed = pressed;
 }
 
-// ---------------- 操縦 ----------------
+// ---------------- Driving ----------------
 
 float applyDeadzone(float v) {
   if (fabsf(v) < STICK_DEADZONE) return 0;
-  // 不感帯の外側を 0..1 に再マップ
+  // Remap the range outside the dead zone to 0..1
   float sign = v > 0 ? 1.0f : -1.0f;
   return sign * (fabsf(v) - STICK_DEADZONE) / (1.0f - STICK_DEADZONE);
 }
@@ -104,7 +104,7 @@ void handleGamepad() {
     speedLevel = (speedLevel + 1) % NUM_SPEED_LEVELS;
     Serial.printf("[DRIVE] speed level %u (%.0f%%)\n", speedLevel + 1,
                   SPEED_LEVELS[speedLevel] * 100);
-    Pad::rumble(80 * (speedLevel + 1));  // レベルが高いほど長く振動
+    Pad::rumble(80 * (speedLevel + 1));  // Longer rumble at higher levels
   }
 
   stopping = gp.buttons & GP_BTN_B;
@@ -113,11 +113,11 @@ void handleGamepad() {
     return;
   }
 
-  float throttle = -applyDeadzone(gp.ly);  // スティックは上が負なので反転
+  float throttle = -applyDeadzone(gp.ly);  // Stick up is negative, so invert
   float turn = applyDeadzone(gp.rx);
   if (turn == 0) turn = applyDeadzone(gp.lx);
 
-  // 十字キーが押されていればスティックより優先
+  // The D-pad takes priority over the sticks when pressed
   if (gp.dpad) {
     throttle = 0;
     turn = 0;
@@ -125,7 +125,7 @@ void handleGamepad() {
     if (gp.dpad & GP_DPAD_DOWN) throttle -= 1;
     if (gp.dpad & GP_DPAD_RIGHT) turn += 1;
     if (gp.dpad & GP_DPAD_LEFT) turn -= 1;
-    if (throttle != 0) turn *= 0.5f;  // 斜めは緩やかにカーブ
+    if (throttle != 0) turn *= 0.5f;  // Diagonals make a gentle curve
   }
 
   float scale = SPEED_LEVELS[speedLevel];
@@ -136,7 +136,7 @@ void handleGamepad() {
 
 void setup() {
   Serial.begin(115200);
-  pinMode(PIN_BUTTON, INPUT);  // G39 は内部プルアップ無し (基板上でプルアップ済み)
+  pinMode(PIN_BUTTON, INPUT);  // G39 has no internal pull-up (pulled up on the board)
   setLed(0, 0, 0);
 
   if (!drive.begin()) {
@@ -152,6 +152,6 @@ void loop() {
   handleGamepad();
   drive.update();
   updateLed(Pad::isConnected());
-  // Bluepad32 のタスクに CPU を譲る (ウォッチドッグ対策)
+  // Yield the CPU to the Bluepad32 task (avoids watchdog resets)
   delay(10);
 }

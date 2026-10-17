@@ -1,8 +1,8 @@
 #pragma once
 #include <Arduino.h>
 
-// ボタンのビット割り当て (Xbox 配置。Bluepad32 は各社のパッドをこの配置に揃える)
-//   A = 下, B = 右, X = 左, Y = 上
+// Button bit assignments (Xbox layout; Bluepad32 maps every vendor's gamepad to this layout)
+//   A = bottom, B = right, X = left, Y = top
 enum GamepadButton : uint32_t {
   GP_BTN_A      = 1u << 0,
   GP_BTN_B      = 1u << 1,
@@ -17,7 +17,7 @@ enum GamepadButton : uint32_t {
   GP_BTN_HOME   = 1u << 10,
 };
 
-// 十字キー (ビットの組み合わせ)
+// D-pad (combination of bits)
 enum GamepadDpad : uint8_t {
   GP_DPAD_UP    = 1u << 0,
   GP_DPAD_DOWN  = 1u << 1,
@@ -26,18 +26,18 @@ enum GamepadDpad : uint8_t {
 };
 
 struct GamepadState {
-  // スティック: -1.0..1.0 (X は右が正, Y は下が正)
+  // Sticks: -1.0..1.0 (X positive to the right, Y positive downward)
   float lx = 0, ly = 0, rx = 0, ry = 0;
   uint8_t dpad = 0;
   uint32_t buttons = 0;
 };
 
-// Bluepad32 でゲームパッドに接続する (操縦に使うのは1台のみ)
+// Connects to a gamepad via Bluepad32 (only one is used for driving)
 namespace Pad {
 void begin();
-void update();  // loop() から定期的に呼ぶ
+void update();  // Call periodically from loop()
 bool isConnected();
 GamepadState state();
-void forgetPairings();  // 保存済みのペアリング情報を消去
+void forgetPairings();  // Clear stored pairing information
 void rumble(uint16_t durationMs);
 }  // namespace Pad

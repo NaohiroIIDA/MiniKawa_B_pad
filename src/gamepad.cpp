@@ -10,11 +10,11 @@ namespace {
 ControllerPtr active = nullptr;
 GamepadState current;
 
-constexpr float AXIS_MAX = 512.0f;  // Bluepad32 のスティック値は -512..511
+constexpr float AXIS_MAX = 512.0f;  // Bluepad32 stick values range from -512..511
 
 float axis(int32_t v) { return constrain(v / AXIS_MAX, -1.0f, 1.0f); }
 
-// config.h の GAMEPAD_ALLOWED_* と照合する
+// Check against GAMEPAD_ALLOWED_* in config.h
 bool isAllowed(const ControllerProperties& p) {
   if (GAMEPAD_ALLOWED_VID != 0 && p.vendor_id != GAMEPAD_ALLOWED_VID) return false;
   if (GAMEPAD_ALLOWED_PID != 0 && p.product_id != GAMEPAD_ALLOWED_PID) return false;
@@ -24,7 +24,7 @@ bool isAllowed(const ControllerProperties& p) {
     uint8_t a[6];
     if (sscanf(allowedAddr, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &a[0], &a[1], &a[2], &a[3], &a[4],
                &a[5]) != 6) {
-      Serial.println("[PAD] GAMEPAD_ALLOWED_ADDR の書式が不正です");
+      Serial.println("[PAD] GAMEPAD_ALLOWED_ADDR has an invalid format");
       return false;
     }
     if (memcmp(a, p.btaddr, 6) != 0) return false;
@@ -44,14 +44,14 @@ void onConnected(ControllerPtr ctl) {
     return;
   }
   if (active) {
-    // 2台目以降は操縦に使わない
+    // Additional controllers are not used for driving
     Serial.println("[PAD] extra controller rejected");
     ctl->disconnect();
     return;
   }
   active = ctl;
   current = GamepadState();
-  // 接続中は他の機器が割り込めないようにする
+  // Prevent other devices from connecting while one is connected
   BP32.enableNewBluetoothConnections(false);
   ctl->setPlayerLEDs(0x01);
   ctl->setColorLED(0, 0, 255);
@@ -95,8 +95,8 @@ void readGamepad(ControllerPtr ctl) {
   current = s;
 }
 
-// キーボードモードのパッド (8BitDo の K モードなど) 用:
-// 矢印キー / WASD を十字キー、スペース/Enter を A、Esc を B として扱う
+// For gamepads in keyboard mode (e.g. 8BitDo K mode):
+// arrow keys / WASD act as the D-pad, Space/Enter as A, Esc as B
 void readKeyboard(ControllerPtr ctl) {
   GamepadState s;
   if (ctl->isKeyPressed(Keyboard_UpArrow) || ctl->isKeyPressed(Keyboard_W)) s.dpad |= GP_DPAD_UP;

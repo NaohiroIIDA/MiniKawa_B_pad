@@ -62,7 +62,7 @@ bool DifferentialDrive::begin() {
 void DifferentialDrive::setTarget(float throttle, float turn) {
   float l = throttle + turn;
   float r = throttle - turn;
-  // どちらかが ±1 を超えたら比率を保って正規化
+  // If either side exceeds ±1, normalize while keeping the ratio
   float m = max(fabsf(l), fabsf(r));
   if (m > 1.0f) {
     l /= m;
