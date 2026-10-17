@@ -9,9 +9,7 @@ Gamepad connectivity is handled by [Bluepad32](https://github.com/ricardoquesada
 
 This robot was built with the code in this repository and has been driven with an 8BitDo Micro. It weighs **about 60 g** in total.
 
-
 https://github.com/user-attachments/assets/f6fcd470-5445-4eaf-9e9e-97b3e650eb28
-
 
 ## Build overview
 

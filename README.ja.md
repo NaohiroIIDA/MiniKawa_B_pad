@@ -9,6 +9,8 @@ M5Atom Lite と連続回転サーボ2個で作る差動二輪ロボットを、B
 
 このリポジトリのコードで実際に製作し、8BitDo Micro での操縦を確認した機体です。全体で **約 60g** です。
 
+https://github.com/user-attachments/assets/f6fcd470-5445-4eaf-9e9e-97b3e650eb28
+
 ## 製作の流れ
 
 1. [必要なもの](#必要なもの) をそろえる
