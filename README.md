@@ -1,213 +1,215 @@
-# kawaC6 — M5Atom Lite Bluetooth ゲームパッド操縦ロボット
+# kawaC6 — M5Atom Lite Bluetooth Gamepad Robot
 
-M5Atom Lite と連続回転サーボ2個で作る差動二輪ロボットを、Bluetooth ゲームパッドで操縦します。
-ゲームパッドの接続には [Bluepad32](https://github.com/ricardoquesada/bluepad32) を使います。
+**English** | [日本語](README.ja.md)
 
-![完成したロボット (重量 60g)](docs/images/robot.jpg)
+A two-wheeled differential-drive robot built from an M5Atom Lite and two continuous-rotation servos, driven with a Bluetooth gamepad.
+Gamepad connectivity is handled by [Bluepad32](https://github.com/ricardoquesada/bluepad32).
 
-このリポジトリのコードで実際に製作し、8BitDo Micro での操縦を確認した機体です。全体で **約 60g** です。
+![The finished robot (60 g)](docs/images/robot.jpg)
 
-## 製作の流れ
+This robot was built with the code in this repository and has been driven with an 8BitDo Micro. It weighs **about 60 g** in total.
 
-1. [必要なもの](#必要なもの) をそろえる
-2. PC に開発環境を用意する ([ビルドと書き込み](#ビルドと書き込み))
-3. **`include/config.h` のゲームパッド制限を自分のパッドに合わせる** ([重要](#手持ちのゲームパッドに合わせる-必須))
-4. Atom に書き込み、組み立て前にサーボだけをつないで動作確認する ([配線](#配線) / [ペアリング](#ペアリング))
-5. シャーシに組み付ける ([組み立て](#組み立て))
-6. 進む向き・直進性を調整する ([調整](#調整-includeconfigh))
+## Build overview
 
-## 必要なもの
+1. Gather the [parts](#parts)
+2. Set up the development environment on your PC ([Build and upload](#build-and-upload))
+3. **Change the gamepad restriction in `include/config.h` to match your own gamepad** ([important](#set-up-for-your-own-gamepad-required))
+4. Upload the firmware and test with only the servos connected, before assembly ([Wiring](#wiring) / [Pairing](#pairing))
+5. Assemble the chassis ([Assembly](#assembly))
+6. Tune the driving direction and straight-line tracking ([Tuning](#tuning-includeconfigh))
 
-| 部品 | 備考 |
+## Parts
+
+| Part | Notes |
 |---|---|
-| M5Atom Lite | 無印 ESP32 搭載 (Bluetooth Classic 対応)。AtomS3 系は不可 |
-| 連続回転サーボ ×2 | FS90R, SM-S4303R など (1500us で停止するタイプ) |
-| Bluetooth ゲームパッド | 8BitDo (Micro など), Xbox, PS4/PS5, Switch Pro, Joy-Con など。[対応一覧](https://bluepad32.readthedocs.io/en/latest/supported_gamepads/) |
-| 電池 | 写真の機体は **リチウムイオン電池 10440 (3.7V) ×1本** と電池ホルダー。単3×4 本 (約 6V) を使う場合は Atom の 5V ピンにつながず、Atom は USB-C などの 5V で給電してください。[電池について](#電池について-10440-リチウムイオン電池) を必ず読んでください |
-| フレーム ×1・車輪 ×2 | 3Dプリント部品。データは [`3d/`](3d/) フォルダ ([3Dプリント部品](#3dプリント部品) を参照) |
-| ジャンパワイヤ / ピンヘッダ | サーボのコネクタと Atom 側面ヘッダの中継用 |
-| USB-C ケーブル | 書き込み用 (データ通信対応のもの) |
+| M5Atom Lite | Original ESP32 (supports Bluetooth Classic). AtomS3 models will not work |
+| Continuous-rotation servo ×2 | FS90R, SM-S4303R, etc. (stops at 1500 µs) |
+| Bluetooth gamepad | 8BitDo (Micro, etc.), Xbox, PS4/PS5, Switch Pro, Joy-Con, etc. [Supported gamepads](https://bluepad32.readthedocs.io/en/latest/supported_gamepads/) |
+| Battery | The robot in the photo uses **one 10440 lithium-ion cell (3.7 V)** with a battery holder. If you use 4×AA (about 6 V), do not connect it to the Atom's 5V pin; power the Atom from USB-C or another 5 V source instead. Be sure to read [About the battery](#about-the-battery-10440-lithium-ion-cell) |
+| Frame ×1, wheels ×2 | 3D-printed parts. Files are in the [`3d/`](3d/) folder (see [3D-printed parts](#3d-printed-parts)) |
+| Jumper wires / pin headers | To connect the servo plugs to the Atom's side header |
+| USB-C cable | For uploading (must support data) |
 
-## 配線
+## Wiring
 
-![実体配線図](docs/images/wiring.png)
+![Wiring diagram](docs/images/wiring.png)
 
 ```
-M5Atom Lite (側面ヘッダ)   左サーボ          右サーボ
-  G21 ---------------------- 信号(橙/白)
-  G25 -------------------------------------- 信号(橙/白)
-  GND -------+-------------- GND(茶/黒) ---- GND(茶/黒)
+M5Atom Lite (side header)  Left servo        Right servo
+  G21 ---------------------- Signal (orange/white)
+  G25 -------------------------------------- Signal (orange/white)
+  GND -------+-------------- GND (brown/black) -- GND (brown/black)
              |
 10440 - -----+
-10440 + -----+-------------- +V(赤) -------- +V(赤)
+10440 + -----+-------------- +V (red) ------ +V (red)
              |
   5V  -------+
 ```
 
-- 10440 電池1本で、**サーボ2個と Atom 本体の両方** に給電しています。電池の + は Atom の 5V ピンとサーボの +V(赤) に、電池の − は Atom の GND とサーボの GND(茶) につなぎます。
-- サーボの + は **電池から直接** 取ってください。Atom の 5V ピン経由 (Atom の基板を通す) でサーボに流すと、電流不足でリセットすることがあります。
-- Atom と電池・サーボの **GND は必ず共通** にします。
-- 左右を逆につないでも、`config.h` の `PIN_SERVO_LEFT` / `PIN_SERVO_RIGHT` を入れ替えれば対応できます。
+- A single 10440 cell powers **both servos and the Atom itself**. Connect the battery + to the Atom's 5V pin and to the servos' +V (red); connect the battery − to the Atom's GND and to the servos' GND (brown).
+- Take the servos' + **directly from the battery**. Feeding the servos through the Atom's 5V pin (i.e. through the Atom's board) can cause resets from insufficient current.
+- The Atom, battery and servos **must share a common GND**.
+- If you wire left and right the other way round, just swap `PIN_SERVO_LEFT` / `PIN_SERVO_RIGHT` in `config.h`.
 
 > [!CAUTION]
-> **この電源構成はテスト1号機のものであり、適切ではない可能性が高いです。**
-> 3.7V のリチウムイオン電池を Atom の 5V ピンに直接つなぐ使い方は、M5Atom Lite の想定 (5V 入力) から外れています。写真の機体では動作しましたが、安全性や長期の動作は検証していません。保護回路や昇圧回路 (5V 出力の昇圧モジュールなど) を入れる、電池と USB の電源を切り替える回路を設けるなど、より適切な構成を検討してください。参考にする場合は自己責任でお願いします。
+> **This power setup is from the first test build and is very likely not appropriate.**
+> Connecting a 3.7 V lithium-ion cell directly to the Atom's 5V pin is outside what the M5Atom Lite is designed for (5 V input). It worked on the robot in the photo, but its safety and long-term reliability have not been tested. Consider a more appropriate setup, such as adding protection circuitry or a boost converter (e.g. a 5 V boost module), or a circuit that switches between battery and USB power. If you use this setup as a reference, you do so at your own risk.
 
 > [!WARNING]
-> **USB-C に関する注意**
+> **About USB-C**
 >
-> - **USB-C ケーブルをつなぐときは、必ず先に電池を外してください。** 書き込み・シリアルモニタ・USB からの給電、いずれの場合も同じです。
-> - この配線では電池の + が Atom の 5V ピンに直結しています。電池をつないだまま USB をつなぐと、USB の 5V が 5V ピンを通って **リチウムイオン電池に直接かかり、充電制御のないまま電流が流れるおそれがあります。** 発熱・膨張・発火の原因になり得ます。
-> - 逆に、電池の電圧が USB 側 (PC の USB ポートなど) にかかるおそれもあります。
-> - USB で給電して動かしたい場合も、電池は外した状態で行ってください。この配線ではサーボの + も 5V ピンにつながっているため、USB 給電中はサーボにも USB から電流が流れます。走行させると電流不足でリセットしたり、PC の USB ポートに負担がかかったりするので、USB 給電中は走らせないでください。
-> - 電池は外しやすいように、ホルダーやコネクタで脱着できる形にしておくのがおすすめです。
+> - **Always remove the battery before connecting a USB-C cable.** This applies to uploading, using the serial monitor and powering from USB alike.
+> - In this wiring, the battery + is connected directly to the Atom's 5V pin. If you connect USB with the battery in place, USB 5 V may flow through the 5V pin **straight into the lithium-ion cell, with no charge control.** This can cause overheating, swelling or fire.
+> - Conversely, the battery voltage may also reach the USB side (e.g. your PC's USB port).
+> - If you want to run the robot on USB power, also remove the battery first. Because the servos' + is also connected to the 5V pin in this wiring, the servos draw current from USB while it is connected. Driving the robot can then cause resets from insufficient current or strain your PC's USB port, so do not drive the robot while it is powered from USB.
+> - It is a good idea to make the battery easy to remove, using a holder or a connector.
 
-## 組み立て
+## Assembly
 
-写真の機体の構成です。
+This is how the robot in the photo is built.
 
-### 3Dプリント部品
+### 3D-printed parts
 
-[`3d/`](3d/) フォルダに写真の機体 (Mk5) のデータがあります。
+The [`3d/`](3d/) folder contains the files for the robot in the photo (Mk5).
 
-![CAD 外観 (Fusion 360)](docs/images/cad.jpg)
+![CAD view (Fusion 360)](docs/images/cad.jpg)
 
-中央の枠に M5Atom Lite をはめ込み、左右にサーボを固定します。サーボと車輪は斜めに取り付けられ、車輪はハの字に傾いています。
+The M5Atom Lite fits into the central frame, with a servo fixed on each side. The servos and wheels are mounted at an angle, so the wheels are tilted inward at the top (cambered).
 
-### ハの字車輪 (ロッキングチェア方式)
+### Tilted wheels (rocking-chair design)
 
-このロボットは、キャスターも補助輪も無い **2輪だけ** で立っています。倒れないのは、車輪を **ハの字に傾けて** 取り付けているからです。
+This robot stands on **just two wheels**, with no caster or support wheel. It does not fall over because the wheels are **mounted at a tilt**.
 
-- 傾いた円盤状の車輪は、床に対して外周の一点で接します。ロボットが前後に傾くと、その接地点が車輪の外周に沿って移動します。
-- 揺り椅子 (ロッキングチェア) の脚と同じで、傾いた側へ接地点がずれ、重心を元の位置へ戻す向きに力が働きます。このため、**センサーや制御なしで、機構だけで** 姿勢が安定します (ロッキングチェア効果)。
-- 重心が低いほどよく安定します。
+- A tilted disc wheel touches the floor at a single point on its rim. When the robot leans forward or backward, that contact point moves along the rim.
+- Just like the runners of a rocking chair, the contact point shifts toward the side the robot leans to, producing a force that brings the center of gravity back. The posture is therefore stabilized **by the mechanism alone, without sensors or control** (the rocking-chair effect).
+- The lower the center of gravity, the more stable it is.
 
-この方式は、1980年代初めに Androbot 社が発売した家庭用ロボット **TOPO** などに採用されていたものです。同社はこの駆動・安定方式を **Andromotion (アンドロモーション)** と呼んでいました。
+This approach was used in **TOPO**, a home robot released by Androbot in the early 1980s, among others. Androbot called this drive and stabilization system **Andromotion**.
 
-| ファイル | 内容 | 必要数 | 大きさ (mm) |
+| File | Contents | Qty | Size (mm) |
 |---|---|---|---|
-| [`Mk5_Frame.3mf`](3d/Mk5_Frame.3mf) | ボディフレーム (Atom ホルダー + サーボ取付部) | 1 | 80 × 34 × 28 |
-| [`mk5_Wheel.3mf`](3d/mk5_Wheel.3mf) | ホイール (外周ローレット付き) | **2** | 直径 50 × 厚さ 5 |
-| [`MiniKawa_Mk5.f3z`](3d/MiniKawa_Mk5.f3z) | Fusion 360 の設計データ (編集用) | — | — |
+| [`Mk5_Frame.3mf`](3d/Mk5_Frame.3mf) | Body frame (Atom holder + servo mounts) | 1 | 80 × 34 × 28 |
+| [`mk5_Wheel.3mf`](3d/mk5_Wheel.3mf) | Wheel (knurled rim) | **2** | 50 dia. × 5 thick |
+| [`MiniKawa_Mk5.f3z`](3d/MiniKawa_Mk5.f3z) | Fusion 360 design file (for editing) | — | — |
 
-- `.3mf` をスライサー (Bambu Studio, PrusaSlicer, Cura など) で開いて印刷します。ホイールは2個印刷してください。
-- サーボや電池の寸法が違う場合は、`.f3z` を Fusion 360 で開いて修正できます。
+- Open the `.3mf` files in a slicer (Bambu Studio, PrusaSlicer, Cura, etc.) and print. Print two wheels.
+- If your servos or battery have different dimensions, you can open the `.f3z` file in Fusion 360 and modify it.
 
-### 組み立てのポイント
+### Assembly tips
 
-- **フレーム**: 中央に M5Atom Lite をはめ込むホルダー、その左右にサーボを1個ずつ固定します。サーボは出力軸が外側を向くように鏡像で取り付けます (そのため既定で左サーボを反転しています)。
-- **車輪**: サーボホーンに直接ねじ止めした円盤状の車輪です。外周にギザギザ (ローレット) を付けると床で滑りにくくなります。
-- **電池**: 10440 を1本使います。単3×4 本に比べてずっと軽く、機体全体で約 60g に収まっているのはこの電池のおかげです。
-- **配線**: サーボのケーブルはフレームの上を通し、Atom 側面ヘッダの近くでまとめます。車輪に巻き込まれないように固定してください。
-- **接地**: 補助輪やキャスターは不要です。[ハの字車輪](#ハの字車輪-ロッキングチェア方式) の2輪だけで自立します。フレームが床に当たらないことを確認してください。
-- Atom の USB-C ポートと本体ボタンに手が届く向きで固定すると、書き込みや走行ロックの操作が楽です。
+- **Frame**: The M5Atom Lite fits into the central holder, with one servo fixed on each side. Mount the servos as mirror images, with their output shafts facing outward (this is why the left servo is inverted by default).
+- **Wheels**: Disc-shaped wheels screwed directly onto the servo horns. A knurled rim helps them grip the floor.
+- **Battery**: One 10440 cell. It is much lighter than 4×AA, which is what keeps the whole robot at about 60 g.
+- **Wiring**: Route the servo cables over the frame and bundle them near the Atom's side header. Secure them so they cannot get caught in the wheels.
+- **Ground contact**: No support wheel or caster is needed. The robot stands on its two [tilted wheels](#tilted-wheels-rocking-chair-design) alone. Check that the frame does not touch the floor.
+- Mounting the Atom so that its USB-C port and button are easy to reach makes uploading and toggling the drive lock easier.
 
-組み立ての前に、サーボを机の上でつないだ状態でペアリングと動作確認を済ませておくと、問題の切り分けが簡単です。
+Before assembly, pair the gamepad and test with the servos connected on your desk; this makes problems much easier to isolate.
 
-## 電池について (10440 リチウムイオン電池)
+## About the battery (10440 lithium-ion cell)
 
-写真の機体では、サーボと Atom 本体の電源に **10440 リチウムイオン電池を1本** 使っています。
-10440 は単4電池とほぼ同じ大きさ (直径 10mm × 長さ 44mm) ですが、中身は **リチウムイオン電池で、電圧は 3.7V** (満充電で約 4.2V) です。小さく軽いので、この大きさのロボットに向いています。
+The robot in the photo uses **one 10440 lithium-ion cell** to power both the servos and the Atom.
+A 10440 cell is almost the same size as an AAA battery (10 mm diameter × 44 mm long), but it is a **lithium-ion cell with a voltage of 3.7 V** (about 4.2 V when fully charged). Its small size and low weight suit a robot of this size.
 
-- 多くのサーボの定格 (4.8〜6V) より電圧が低いため、単3×4 本 (約 6V) と比べると速度とトルクはやや落ちます。写真の機体はこの電圧で問題なく走行しています。
-- 電池が減ってくると (目安 3.3V 前後) サーボが遅くなり、Atom がリセットしやすくなります。動きが鈍くなったら充電してください。
+- Its voltage is lower than the rating of most servos (4.8–6 V), so speed and torque are somewhat lower than with 4×AA (about 6 V). The robot in the photo drives fine at this voltage.
+- As the battery runs down (around 3.3 V as a guide), the servos slow down and the Atom becomes more likely to reset. Recharge it when the robot gets sluggish.
 
 > [!WARNING]
-> **10440 は単4電池と同じ大きさですが、まったく別の特殊な電池です。取り扱いには十分注意してください。**
+> **A 10440 cell is the same size as an AAA battery, but it is a completely different, special-purpose battery. Handle it with great care.**
 >
-> - **単4電池の代わりに他の機器へ入れない。** 単4用の機器 (1.5V 前提) に入れると 2 倍以上の電圧がかかり、機器が壊れたり発熱したりします。見た目では区別しにくいので、保管時も単4電池と混ぜないでください。
-> - **充電はリチウムイオン電池 (3.7V / 4.2V) 対応の専用充電器で行う。** ニッケル水素電池用の充電器では絶対に充電しないでください。
-> - **ショートさせない。** 大きな電流が流れて発熱・発火の危険があります。むき出しのまま金属 (鍵・硬貨・工具など) と一緒に持ち運ばないでください。
-> - **過放電させない。** 使い切った状態で放置すると劣化し、再充電時に危険な場合があります。使わないときは電池を外し、半分程度充電した状態で保管します。保護回路付きの電池を選ぶとより安全です。
-> - **プラス・マイナスを逆に入れない。** 配線前に電池ホルダーの極性をテスターなどで確認してください。
-> - **膨らみ・変形・異常な発熱・異臭** があればすぐに使用をやめ、自治体のルールに従って処分してください (リチウムイオン電池は一般ごみに出せません)。
-> - 充電中・走行中はその場を離れず、燃えやすいものの近くで扱わないでください。
-> - 子どもが扱う場合は、充電と電池の着脱は大人が行ってください。
+> - **Never use it in place of an AAA battery in other devices.** A device designed for AAA (1.5 V) would receive more than twice its intended voltage and could be damaged or overheat. They are hard to tell apart by sight, so do not store them together with AAA batteries.
+> - **Charge it only with a dedicated charger for lithium-ion cells (3.7 V / 4.2 V).** Never charge it in a NiMH charger.
+> - **Do not short-circuit it.** A large current can flow, with a risk of overheating and fire. Do not carry bare cells together with metal objects (keys, coins, tools, etc.).
+> - **Do not over-discharge it.** Leaving it fully drained degrades it and can make recharging dangerous. When not in use, remove the cell and store it at around half charge. Choosing a cell with a built-in protection circuit is safer.
+> - **Do not insert it with reversed polarity.** Check the polarity of the battery holder with a multimeter or similar before wiring.
+> - If you notice **swelling, deformation, abnormal heat or an unusual smell**, stop using it immediately and dispose of it according to your local regulations (lithium-ion batteries must not go in general waste).
+> - Do not leave it unattended while charging or driving, and keep it away from flammable materials.
+> - If children are using the robot, an adult should handle charging and inserting/removing the battery.
 
-## ビルドと書き込み
+## Build and upload
 
-PlatformIO を使います。Bluepad32 は Bluetooth スタックを組み込んだ専用 Arduino コアとして配布されているため、`platformio.ini` で公式 espressif32 プラットフォームのフレームワークを Bluepad32 版に差し替えています。
+This project uses PlatformIO. Bluepad32 is distributed as a custom Arduino core with the Bluetooth stack built in, so `platformio.ini` replaces the framework of the official espressif32 platform with the Bluepad32 version.
 
-1. [VS Code](https://code.visualstudio.com/) に [PlatformIO IDE 拡張](https://platformio.org/install/ide?install=vscode) を入れる (またはコマンドラインの PlatformIO Core を入れる)
-2. このリポジトリをクローンし、フォルダを VS Code で開く
-3. 次の「手持ちのゲームパッドに合わせる」を済ませる
-4. Atom を USB-C で接続し、書き込む
+1. Install the [PlatformIO IDE extension](https://platformio.org/install/ide?install=vscode) in [VS Code](https://code.visualstudio.com/) (or install the command-line PlatformIO Core)
+2. Clone this repository and open the folder in VS Code
+3. Complete "Set up for your own gamepad" below
+4. Connect the Atom over USB-C and upload
 
 ```sh
 pio run -t upload
 pio device monitor
 ```
 
-初回のビルドでは Bluepad32 版 Arduino コアのダウンロードが入るので時間がかかります。
-書き込みに失敗する場合は `platformio.ini` の `upload_speed` を `115200` に下げてみてください。
+The first build takes a while because it downloads the Bluepad32 Arduino core.
+If uploading fails, try lowering `upload_speed` in `platformio.ini` to `115200`.
 
-### 手持ちのゲームパッドに合わせる (必須)
+### Set up for your own gamepad (required)
 
-`include/config.h` では、作者の手持ちのパッド (8BitDo Micro の特定の1台) だけが接続できるように制限しています。**このままだと他のパッドは接続直後に切断されます。** 最初は制限を外してください。
+`include/config.h` restricts connections to the author's own gamepad (one specific 8BitDo Micro). **As shipped, any other gamepad is disconnected immediately after connecting.** Remove the restriction first.
 
 ```cpp
-constexpr uint16_t GAMEPAD_ALLOWED_VID = 0;  // 0 = 制限しない
-constexpr uint16_t GAMEPAD_ALLOWED_PID = 0;  // 0 = 制限しない
-#define GAMEPAD_ALLOWED_ADDR ""              // 空文字 = 制限しない
+constexpr uint16_t GAMEPAD_ALLOWED_VID = 0;  // 0 = no restriction
+constexpr uint16_t GAMEPAD_ALLOWED_PID = 0;  // 0 = no restriction
+#define GAMEPAD_ALLOWED_ADDR ""              // empty string = no restriction
 ```
 
-接続するとシリアルモニタにパッドの VID / PID / addr が表示されます。周りの人のパッドが勝手につながらないように固定したい場合は、その値を書き戻して再度書き込んでください。
+When a gamepad connects, its VID / PID / addr are printed to the serial monitor. If you want to lock the robot to your gamepad so that other people's gamepads cannot connect, write those values back and upload again.
 
-## ペアリング
+## Pairing
 
-1. ロボットの電源を入れる (本体LEDが **青点滅**)。
-2. ゲームパッドをペアリングモードにする。
-   - **8BitDo Micro**: モードスイッチを **S** (Switch) か **D** (D-input) にし、ペアリングボタンを長押し
-   - Xbox: 上部のペアリングボタンを長押し
-   - PS4/PS5: SHARE (Create) + PS ボタンを長押し
-   - Switch Pro: 上部のシンクボタンを長押し
-3. 接続されると本体LEDが **緑** になり、パッドが短く振動します (振動対応機のみ)。
+1. Power on the robot (the LED **blinks blue**).
+2. Put the gamepad into pairing mode.
+   - **8BitDo Micro**: Set the mode switch to **S** (Switch) or **D** (D-input) and hold the pair button
+   - Xbox: Hold the pair button on top
+   - PS4/PS5: Hold SHARE (Create) + PS
+   - Switch Pro: Hold the sync button on top
+3. Once connected, the LED turns **green** and the gamepad vibrates briefly (rumble-capable gamepads only).
 
-2回目以降はパッドの電源を入れるだけで再接続されます。別のパッドに替えるときは **本体ボタンを3秒長押し** してペアリング情報を消してください (LEDが一瞬白く光ります)。
+After that, just turn the gamepad on and it reconnects. To switch to a different gamepad, **hold the Atom's button for 3 seconds** to clear the pairing information (the LED flashes white briefly).
 
-## 操作方法
+## Controls
 
-| 操作 | 動作 |
+| Input | Action |
 |---|---|
-| 左スティック 上下 | 前進 / 後退 |
-| 右スティック 左右 (または左スティック左右) | 旋回 |
-| 十字キー | 前後左右 (斜めはカーブ) |
-| A (下側のボタン) | 速度レベル切替 35% → 65% → 100% (高いほど長く振動) |
-| B (右側のボタン) | 押している間 非常停止 |
-| 本体ボタン 短押し | 走行ロック ON/OFF (ON の間は LED 赤・動かない) |
-| 本体ボタン 長押し (3秒) | ペアリング情報を消去 |
+| Left stick up/down | Forward / backward |
+| Right stick left/right (or left stick left/right) | Turn |
+| D-pad | Forward/backward/left/right (diagonals curve) |
+| A (bottom button) | Cycle speed level 35% → 65% → 100% (longer rumble at higher levels) |
+| B (right button) | Emergency stop while held |
+| Atom button, short press | Drive lock ON/OFF (LED red and no movement while ON) |
+| Atom button, long press (3 s) | Clear pairing information |
 
-ボタン名は Xbox 配置が基準です。Switch 系や 8BitDo のパッドでは刻印と入れ替わっていることがあるので、`DEBUG_PRINT_GAMEPAD 1` で実際にどのボタンが A/B になるか確認してください。
-キーボードモードのパッドでも、矢印キー/WASD で走行、Space/Enter で速度切替、Esc で停止できます。
+Button names follow the Xbox layout. On Switch-style and 8BitDo gamepads the printed labels may be swapped, so set `DEBUG_PRINT_GAMEPAD 1` to check which buttons actually register as A/B.
+Gamepads in keyboard mode also work: arrow keys/WASD to drive, Space/Enter to change speed, Esc to stop.
 
-パッドが切断されるとロボットはすぐに停止します。
+The robot stops immediately if the gamepad disconnects.
 
-## 調整 (`include/config.h`)
+## Tuning (`include/config.h`)
 
-- **進む向きが逆 / 片輪だけ逆** → `SERVO_INVERT_LEFT` / `SERVO_INVERT_RIGHT`
-- **停止時にサーボがゆっくり回る** → `SERVO_RELEASE_ON_STOP = true` (既定) で停止中はパルスを止めます
-- **まっすぐ走らない** → `SERVO_TRIM_*_US` で左右の速度差を補正
-- **反応が急すぎる / 鈍い** → `ACCEL_PER_SEC`, `TURN_GAIN`, `SPEED_LEVELS`
-- **入力が届いているか確認したい** → `DEBUG_PRINT_GAMEPAD 1` でスティック・ボタンの値をシリアル表示
+- **Drives in the wrong direction / one wheel reversed** → `SERVO_INVERT_LEFT` / `SERVO_INVERT_RIGHT`
+- **Servos creep slowly when stopped** → with `SERVO_RELEASE_ON_STOP = true` (default), pulses are stopped while idle
+- **Does not drive straight** → compensate the left/right speed difference with `SERVO_TRIM_*_US`
+- **Too twitchy / too sluggish** → `ACCEL_PER_SEC`, `TURN_GAIN`, `SPEED_LEVELS`
+- **Check that input is arriving** → `DEBUG_PRINT_GAMEPAD 1` prints stick and button values to serial
 
-## うまく動かないとき
+## Troubleshooting
 
-| 症状 | 確認すること |
+| Symptom | What to check |
 |---|---|
-| パッドがつながってもすぐ切れる | `GAMEPAD_ALLOWED_VID` / `PID` / `ADDR` の制限 ([手持ちのゲームパッドに合わせる](#手持ちのゲームパッドに合わせる-必須)) |
-| LED が青点滅のままつながらない | パッドがペアリングモードか。以前ペアリングしたパッドなら本体ボタン3秒長押しで情報を消してやり直す |
-| 走り出すと Atom がリセットする | サーボ電源を Atom から取っていないか。電池の残量 (10440 なら充電する) |
-| サーボが全く動かない | GND が共通になっているか。信号線のピン (G21 / G25)。LED が赤 (走行ロック中) になっていないか |
-| 前進で後ろに進む / その場で回る | `SERVO_INVERT_LEFT` / `SERVO_INVERT_RIGHT` |
+| Gamepad connects but drops immediately | The `GAMEPAD_ALLOWED_VID` / `PID` / `ADDR` restriction ([Set up for your own gamepad](#set-up-for-your-own-gamepad-required)) |
+| LED keeps blinking blue and never connects | Is the gamepad in pairing mode? If it was paired before, hold the Atom's button for 3 s to clear pairing and try again |
+| Atom resets when the robot starts moving | Are the servos powered through the Atom? Battery level (recharge the 10440) |
+| Servos do not move at all | Is GND shared? Signal pins (G21 / G25). Is the LED red (drive lock on)? |
+| Goes backward when driving forward / spins in place | `SERVO_INVERT_LEFT` / `SERVO_INVERT_RIGHT` |
 
-## ファイル構成
+## File structure
 
 ```
-platformio.ini        ビルド設定 (Bluepad32 版 Arduino コア)
-3d/                   3Dプリント部品 (.3mf) と Fusion 360 設計データ (.f3z)
-docs/images/          README 用の写真・実体配線図
-include/config.h      ピン・サーボ・操縦の設定
-src/main.cpp          操縦ロジック・本体ボタン・LED
-src/gamepad.*         Bluepad32 ラッパー (接続管理・入力の正規化)
-src/servo_drive.*     連続回転サーボ制御と差動駆動
+platformio.ini        Build settings (Bluepad32 Arduino core)
+3d/                   3D-printed parts (.3mf) and Fusion 360 design file (.f3z)
+docs/images/          Photos and wiring diagram for the README
+include/config.h      Pin, servo and driving settings
+src/main.cpp          Driving logic, Atom button, LED
+src/gamepad.*         Bluepad32 wrapper (connection management, input normalization)
+src/servo_drive.*     Continuous-rotation servo control and differential drive
 ```
