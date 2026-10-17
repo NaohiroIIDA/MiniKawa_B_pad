@@ -1,4 +1,4 @@
-# kawaC6 — M5Atom Lite Bluetooth Gamepad Robot
+# MiniKawa_B_pad — M5Atom Lite Bluetooth Gamepad Robot
 
 **English** | [日本語](README.ja.md)
 
